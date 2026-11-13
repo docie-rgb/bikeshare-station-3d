@@ -155,11 +155,14 @@ input/bikeshare_frames_24.zip
 | 기기 | 브라우저 · 통신 | 첫 화면까지 |
 |---|---|---:|
 | Windows PC (Claude 앱 내장 브라우저) | 로컬 서버 (네트워크 없음) | 2.80–4.24 s |
-| Windows PC (Claude 앱 내장 브라우저) | GitHub Pages | 배포 후 측정 |
+| Windows PC (Claude 앱 내장 브라우저) | GitHub Pages, 첫 방문 (PC의 인터넷 연결, 종류 미기록) | 2.83 s |
+| Windows PC (Claude 앱 내장 브라우저) | GitHub Pages, 다시 열기 (브라우저 캐시) | 0.77 s |
+| 같은 PC에서 폰 화면 흉내 (375×812, 실제 폰 아님) | GitHub Pages, 캐시 | 0.45 s |
 | 내 폰 | (기기 · Wi-Fi/LTE 기재) | 직접 측정해 기재 |
 | 다른 사람 폰 | (기기 · Wi-Fi/LTE 기재) | 직접 측정해 기재 |
 
-폰 값은 실제 폰으로 주소를 열어 패널에 표시된 숫자를 적어야 하므로, 측정 전에는 비워 둡니다.
+- 폰 값은 실제 폰으로 주소를 열어 패널에 표시된 숫자를 적어야 하므로, 측정 전에는 비워 둡니다. 폰 화면 흉내로는 화면 배치(가로 스크롤 없음)와 로딩만 확인했습니다.
+- GitHub Pages는 `scene.sog`를 gzip으로 압축해 보냅니다. 그래서 응답 헤더의 크기(4,934,199 B)가 실제 파일 크기(4,938,596 B)와 다릅니다. 뷰어는 실제로 받은 바이트 수를 표시합니다.
 
 ## 7. 복원되지 않은 부분과 원인
 
@@ -231,6 +234,6 @@ input/bikeshare_frames_24.zip
 | `scripts/test_synthetic.py` | 합성 장면으로 유틸리티와 뷰어 확인 (실제 결과 아님) |
 | `privacy/redact_boxes.json`, `privacy/review.html` | 블러 영역과 로컬 검토 페이지 |
 | `results/` | `metrics.json`, `scene_meta.json`, `formats.json`/`.md`, `preview_topdown.png`, `redaction_sheet.jpg` (블러 후 썸네일) |
-| `shots/viewer.png` | 뷰어 화면 캡처 (촬영 시점 1, 1280×800 화면을 800×499로 저장) |
+| `shots/viewer.png` | GitHub Pages 뷰어 화면 캡처 (촬영 시점 1, 1280×800 화면을 800×499로 저장) |
 
 `scene.ply`, `scene.compressed.ply`, `scene.spz`, 결과 ZIP은 용량 때문에 `.gitignore`로 제외했습니다. 형식 비교 수치는 위 표와 `results/formats.json`에 남아 있습니다.
