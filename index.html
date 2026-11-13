@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>자전거 대여소 3D</title>
+<meta name="description" content="스마트폰 사진 24장으로 복원한 서울 공공자전거 대여소 Gaussian Splat 뷰어 (MapAnything + Spark)">
+<style>
+  :root {
+    --bg: #0f1113; --panel: rgba(20, 22, 25, 0.86); --text: #eceff1; --muted: #9aa3ab;
+    --accent: #3ec98a; --border: rgba(255, 255, 255, 0.12);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif; overflow: hidden; }
+  canvas#view { display: block; width: 100vw; height: 100vh; touch-action: none; }
+  .panel { position: fixed; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; backdrop-filter: blur(6px); }
+  #info { top: 16px; left: 16px; max-width: min(360px, calc(100vw - 32px)); }
+  #info h1 { font-size: 16px; margin: 0 0 4px; }
+  #info p { margin: 0; color: var(--muted); font-size: 12.5px; }
+  #stats { margin-top: 8px; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 12.5px; }
+  #stats dt { color: var(--muted); } #stats dd { margin: 0; font-variant-numeric: tabular-nums; }
+  #controls { left: 16px; right: 16px; bottom: 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  #controls label { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  #shot { flex: 1 1 160px; accent-color: var(--accent); }
+  button { background: transparent; color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 10px; font: inherit; font-size: 12.5px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  #status { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--muted); text-align: center; padding: 0 16px; }
+  #help { color: var(--muted); font-size: 12px; width: 100%; }
+  #dropHint { position: fixed; inset: 16px; border: 2px dashed var(--accent); border-radius: 12px;
+    display: none; align-items: center; justify-content: center; background: rgba(15, 17, 19, 0.6);
+    color: var(--text); font-size: 16px; pointer-events: none; text-align: center; padding: 16px; }
+  body.dragging #dropHint { display: flex; }
+  @media (max-width: 600px) { #help { display: none; } #info p { display: none; } }
+</style>
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+      "@sparkjsdev/spark": "https://cdn.jsdelivr.net/npm/@sparkjsdev/spark@2.4.0/dist/spark.module.js"
+    }
+  }
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="status">장면을 불러오는 중…</div>
+
+<section id="info" class="panel">
+  <h1>서울 공공자전거 대여소 3D</h1>
+  <p>스마트폰 사진 24장으로 MapAnything이 추정한 점을 Gaussian Splat으로 옮긴 장면입니다. 사진에 찍히지 않은 면(거치대 뒤, 자전거 아래)은 비어 있습니다.</p>
+  <dl id="stats"></dl>
+</section>
+
+<section id="controls" class="panel">
+  <label for="shot">촬영 시점 <span id="shotLabel">-</span></label>
+  <input id="shot" type="range" min="1" max="1" value="1" step="1" disabled>
+  <button id="overview" type="button">전체 보기</button>
+  <button id="openBtn" type="button">파일 열기</button>
+  <input id="fileInput" type="file" accept=".sog,.spz,.ply,.splat,.ksplat,.rad" hidden>
+  <div id="help">드래그: 회전 · 우클릭/두 손가락 드래그: 이동 · 휠/핀치: 확대 · .sog / .spz / .ply / .compressed.ply 파일을 끌어다 놓으면 같은 시점에서 바꿔 볼 수 있습니다</div>
+</section>
+<div id="dropHint">여기에 놓으면 현재 시점 그대로 장면을 바꿉니다</div>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { SparkRenderer, SplatMesh, SplatFileType } from "@sparkjsdev/spark";
+
+const qs = new URLSearchParams(location.search);
+const SRC = qs.get("src") || "scene.sog";
+const META = qs.get("meta") || "results/scene_meta.json";
+
+const canvas = document.getElementById("view");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight, false);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0f1113);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 1000);
+scene.add(new SparkRenderer({ renderer }));
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+camera.position.set(0, 0, 0.01);
+controls.target.set(0, 0, -2);
+
+const statusEl = document.getElementById("status");
+const stats = document.getElementById("stats");
+function stat(k, v) { stats.insertAdjacentHTML("beforeend", `<dt>${k}</dt><dd>${v}</dd>`); }
+
+// 촬영 시점 / 장면 정보 (노트북이 만든 scene_meta.json; 없어도 동작)
+let meta = null;
+try { const r = await fetch(META); if (r.ok) meta = await r.json(); } catch {}
+
+const slider = document.getElementById("shot");
+const shotLabel = document.getElementById("shotLabel");
+let overviewPose = null;
+function goTo(i) {
+  const c = meta.cameras[i];
+  camera.position.fromArray(c.position);
+  controls.target.fromArray(c.target);
+  shotLabel.textContent = `${i + 1}/${meta.cameras.length}`;
+}
+if (meta?.cameras?.length) {
+  slider.max = meta.cameras.length; slider.disabled = false;
+  slider.addEventListener("input", () => goTo(slider.value - 1));
+  // 전체 보기: 장면 중심에서 카메라 궤적 바깥쪽 위로 물러난 시점
+  const tgt = new THREE.Vector3().fromArray(meta.target);
+  const mid = new THREE.Vector3().fromArray(meta.cameras[Math.floor(meta.cameras.length / 2)].position);
+  const dir = mid.clone().sub(tgt); dir.y = 0; dir.normalize();
+  const d = meta.scene_diagonal * 0.75;
+  overviewPose = { position: tgt.clone().addScaledVector(dir, d).add(new THREE.Vector3(0, d * 0.6, 0)), target: tgt };
+  goTo(0);
+}
+document.getElementById("overview").addEventListener("click", () => {
+  if (!overviewPose) return;
+  camera.position.copy(overviewPose.position); controls.target.copy(overviewPose.target);
+  shotLabel.textContent = "전체";
+});
+
+// 확장자 → Spark 형식 이름 (fileBytes로 열 때 fileType으로 넘김)
+// .compressed.ply 도 PLY 계열(Spark가 헤더로 압축 여부를 판별), .sog 는 PlayCanvas SOG(zip 묶음)
+const EXT_TO_TYPE = [
+  [".compressed.ply", SplatFileType.PLY],
+  [".ply", SplatFileType.PLY],
+  [".spz", SplatFileType.SPZ],
+  [".sog", SplatFileType.PCSOGSZIP],
+  [".splat", SplatFileType.SPLAT],
+  [".ksplat", SplatFileType.KSPLAT],
+  [".rad", SplatFileType.RAD],
+];
+const typeFor = (name) => EXT_TO_TYPE.find(([ext]) => name.toLowerCase().endsWith(ext))?.[1];
+const fmt = (n) => n.toLocaleString("ko-KR");
+
+let splat = null;
+let firstFrameDone = false;
+// 첫 화면 판정: 캔버스 중앙 가로줄에 배경색이 아닌 픽셀이 생길 때까지 프레임마다 확인 (최대 10초)
+async function waitForPixels() {
+  const gl = renderer.getContext();
+  const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+  const buf = new Uint8Array(w * 4);
+  const until = performance.now() + 10000;
+  while (performance.now() < until) {
+    await new Promise((r) => requestAnimationFrame(r));
+    gl.readPixels(0, h >> 1, w, 1, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+    for (let i = 0; i < buf.length; i += 16) {
+      if (Math.abs(buf[i] - 15) + Math.abs(buf[i + 1] - 17) + Math.abs(buf[i + 2] - 19) > 30) return true;
+    }
+  }
+  return false;
+}
+// 장면 로드: 카메라는 그대로 두고 메시만 교체하므로 같은 시점에서 형식을 비교할 수 있음
+async function loadSplat({ url, file }) {
+  const name = file ? file.name : url.split("/").pop();
+  statusEl.textContent = `${name} 불러오는 중…`; statusEl.hidden = false;
+  const t0 = performance.now();
+  let opts, bytes = null, type = null;
+  if (file) {
+    type = typeFor(file.name);
+    if (!type) { statusEl.textContent = `지원하지 않는 확장자입니다: ${file.name}`; return; }
+    const fileBytes = new Uint8Array(await file.arrayBuffer());
+    bytes = fileBytes.byteLength;
+    opts = { fileBytes, fileType: type };
+  } else {
+    opts = { url };
+    try { const h = await fetch(url, { method: "HEAD" }); bytes = Number(h.headers.get("content-length")) || null; } catch {}
+  }
+  if (splat) { scene.remove(splat); splat.dispose?.(); splat = null; }
+  const next = new SplatMesh(opts);
+  next.quaternion.set(1, 0, 0, 0); // OpenCV(+Y 아래, +Z 앞) → three.js(+Y 위): X축 180° 회전
+  scene.add(next); // 로드 전에 장면에 넣어야 초기화 직후 바로 그려짐
+  try {
+    await next.initialized;
+  } catch (e) {
+    statusEl.textContent = `장면 파일(${name})을 불러오지 못했습니다: ${e?.message || e}`;
+    console.error(e); scene.remove(next); next.dispose?.(); return;
+  }
+  splat = next;
+  const loadS = (performance.now() - t0) / 1000;
+  await waitForPixels();
+  statusEl.hidden = true;
+  const count = splat.numSplats ?? splat.packedSplats?.numSplats;
+  stats.innerHTML = "";
+  stat("파일", `${name}${type ? ` (${type})` : ""}`);
+  if (bytes) stat("크기", `${(bytes / 1e6).toFixed(2)} MB`);
+  if (count) stat("알갱이", `${fmt(count)}${bytes ? ` · ${(bytes / count).toFixed(2)} B/개` : ""}`);
+  stat("불러오기", `${loadS.toFixed(2)} s`);
+  if (!firstFrameDone) {
+    firstFrameDone = true;
+    stat("첫 화면까지", `${(performance.now() / 1000).toFixed(2)} s (페이지 열기부터, 이 기기)`);
+  }
+  if (meta?.spread_ratio != null) stat("카메라 퍼짐 비", meta.spread_ratio.toFixed(3));
+  window.__viewerStats = { name, type, bytes, count, loadS, firstFrameS: performance.now() / 1000 };
+}
+
+await loadSplat({ url: SRC });
+
+// 파일 끌어다 놓기 / 열기 (fileBytes + fileType)
+let dragDepth = 0;
+addEventListener("dragenter", (e) => { e.preventDefault(); dragDepth++; document.body.classList.add("dragging"); });
+addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove("dragging"); } });
+addEventListener("dragover", (e) => e.preventDefault());
+addEventListener("drop", (e) => {
+  e.preventDefault(); dragDepth = 0; document.body.classList.remove("dragging");
+  const file = e.dataTransfer?.files?.[0];
+  if (file) loadSplat({ file });
+});
+const fileInput = document.getElementById("fileInput");
+document.getElementById("openBtn").addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", () => { if (fileInput.files[0]) loadSplat({ file: fileInput.files[0] }); fileInput.value = ""; });
+
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight, false);
+});
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+</script>
+</body>
+</html>

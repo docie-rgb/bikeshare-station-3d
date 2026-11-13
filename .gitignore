@@ -1,0 +1,20 @@
+# 원본 입력: 식별정보(번호판·학교명·전화번호)가 블러되지 않은 사진이므로 공개하지 않음
+input/
+data/
+*.zip
+
+# 합성 테스트 출력, 변환 중간 파일
+tests_out/
+results/_roundtrip/
+
+# 대용량 중간 결과 (필요하면 Release 등 별도 경로로 공유)
+results/scene.ply
+results/scene.compressed.ply
+results/scene.spz
+# 루트 scene.sog와 동일한 사본
+results/scene.sog
+
+# 로컬 도구
+.claude/
+__pycache__/
+*.pyc

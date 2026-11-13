@@ -1,0 +1,43 @@
+{
+  "tool": "@playcanvas/splat-transform@3.10.3",
+  "node": "v22.23.5",
+  "input": "scene.ply",
+  "rows": [
+    {
+      "format": "ply (INRIA, 원본)",
+      "file": "scene.ply",
+      "bytes": 55423612,
+      "seconds": null,
+      "points": 815047,
+      "bytes_per_point": 68.00051040001374,
+      "note": "변환 입력"
+    },
+    {
+      "format": "compressed.ply",
+      "file": "scene.compressed.ply",
+      "bytes": 13270660,
+      "seconds": 2.373,
+      "points": 815047,
+      "bytes_per_point": 16.282079438363677,
+      "note": ""
+    },
+    {
+      "format": "sog",
+      "file": "scene.sog",
+      "bytes": 4938596,
+      "seconds": 10.117,
+      "points": 815047,
+      "bytes_per_point": 6.059277563134396,
+      "note": ""
+    },
+    {
+      "format": "spz",
+      "file": "scene.spz",
+      "bytes": 7474788,
+      "seconds": 2.343,
+      "points": 815047,
+      "bytes_per_point": 9.170990139218965,
+      "note": ""
+    }
+  ]
+}
