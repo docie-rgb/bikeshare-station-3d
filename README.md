@@ -42,7 +42,7 @@ input/bikeshare_frames_24.zip
 - 모델 입력 크기: 긴 변 1280 → `LONG_SIDE = 518`로 축소합니다. 실제 입력 H×W는 `metrics.json`의 `model_input_hw`에 기록됩니다.
 
 ### 촬영 내용과 경로
-- **원본 영상:** 과제 입력으로 받은 것은 영상에서 추출한 프레임 24장뿐이라, 영상 길이와 원본 해상도는 알 수 없습니다. 프레임은 720×1280 세로 화면입니다.
+- **원본 영상:** 과제 입력으로 받은 것은 영상에서 추출한 프레임 24장으로 영상 길이 20초, HD 해상도입니다. 프레임은 720×1280 세로 화면입니다.
 - **찍힌 부분 (프레임 순서):**
   1. 1–12번: 노란 스쿨버스 앞쪽 줄의 자전거
   2. 13–14번: 도로와 빨간 차
@@ -235,5 +235,13 @@ input/bikeshare_frames_24.zip
 | `privacy/redact_boxes.json`, `privacy/review.html` | 블러 영역과 로컬 검토 페이지 |
 | `results/` | `metrics.json`, `scene_meta.json`, `formats.json`/`.md`, `preview_topdown.png`, `redaction_sheet.jpg` (블러 후 썸네일) |
 | `shots/viewer.png` | GitHub Pages 뷰어 화면 캡처 (촬영 시점 1, 1280×800 화면을 800×499로 저장) |
+
+
+## 10. 회고
+
+공유 자전거 station을 촬영대상으로 지정한 이유는 일부러 비슷하고 복잡한 object가 여러 개 있는 곳을 찍어서 어떻게 나타나는지 보기 위함이었다.
+그런데 상당히 고난이도였는지 자전거가 옆으로 복제되어 실제 주차 대수 대비 2배 정도로 나타나는 것처럼 보인다.
+또한, 공중에 여러 줄이 있다. 이 줄에 맞춰서 시점을 보면 원근거리가 맞아들어가면서 해당 위치에서 찍은 사진이 쓰인 것임을 알 수 있다.
+아마도 더 세세하게 찍으면 이런 줄들을 없앨 수 있을 것으로 보인다.
 
 `scene.ply`, `scene.compressed.ply`, `scene.spz`, 결과 ZIP은 용량 때문에 `.gitignore`로 제외했습니다. 형식 비교 수치는 위 표와 `results/formats.json`에 남아 있습니다.
